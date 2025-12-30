@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 export default function Home() {
 	return (
@@ -10,7 +11,9 @@ export default function Home() {
 						<div className="h-7 w-7 rounded-lg bg-foreground/10" />
 						<span className="text-base font-semibold tracking-tight">AInvoicer</span>
 					</div>
-					<Button className="px-2">Create your first invoice</Button>
+					<Link href="/create">
+						<Button className="px-2">Create your first invoice</Button>
+					</Link>
 				</div>
 			</header>
 

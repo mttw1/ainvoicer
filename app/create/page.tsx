@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -202,7 +202,6 @@ export default function CreateInvoicePage() {
       totals: { subtotal },
     };
 
-    // eslint-disable-next-line no-console
     console.log("INVOICE_PAYLOAD", payload);
     alert("Invoice generated (placeholder). Check console for payload.");
   }
@@ -217,7 +216,7 @@ export default function CreateInvoicePage() {
   React.useEffect(() => setDir(1), [stepIndex]);
 
   return (
-    <div className="min-h-[100dvh] bg-background text-foreground">
+    <div className="min-h-dvh bg-background text-foreground">
       {/* Top progress */}
       <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur">
         <div className="mx-auto max-w-xl px-4 py-3">
