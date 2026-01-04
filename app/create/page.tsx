@@ -33,7 +33,7 @@ type InvoiceMeta = {
   issueDate: string; // YYYY-MM-DD
   dueDate: string; // YYYY-MM-DD
   notes: string;
-  currency: "GBP" | "USD" | "EUR";
+  currency: "GBP";
 };
 
 const steps = ["Business", "Customer", "Items", "Generate"] as const;
@@ -41,8 +41,6 @@ type Step = (typeof steps)[number];
 
 const currencySymbol: Record<InvoiceMeta["currency"], string> = {
   GBP: "£",
-  USD: "$",
-  EUR: "€",
 };
 
 function uid() {
@@ -117,7 +115,7 @@ export default function CreateInvoicePage() {
   });
 
   const [meta, setMeta] = React.useState<InvoiceMeta>({
-    invoiceNumber: `INV-${String(Date.now()).slice(-6)}`,
+    invoiceNumber: `AIX-000001`,
     issueDate: isoToday,
     dueDate: isoToday,
     notes: "",
@@ -236,18 +234,12 @@ export default function CreateInvoicePage() {
             </div>
             <div className="mt-2 flex justify-between text-base text-muted-foreground">
               {steps.map((s, i) => (
-                <button
+                <p
                   key={s}
-                  onClick={() => {
-                    // allow jumping only to completed/previous steps in early versions? here: allow any.
-                    setDir(i > stepIndex ? 1 : -1);
-                    goTo(i);
-                  }}
-                  className={`underline-offset-4 hover:underline ${i === stepIndex ? "text-foreground" : ""}`}
-                  type="button"
+                  className={`underline-offset-4 ${i === stepIndex ? "text-foreground" : ""}`}
                 >
                   {s}
-                </button>
+                </p>
               ))}
             </div>
           </div>
@@ -385,31 +377,7 @@ export default function CreateInvoicePage() {
                   hint="Tip: keep it simple. One line item is often enough."
                 >
                   <div className="rounded-2xl border bg-foreground/5 p-4">
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        variant={meta.currency === "GBP" ? "default" : "secondary"}
-                        className="h-11"
-                        onClick={() => setMeta((p) => ({ ...p, currency: "GBP" }))}
-                      >
-                        GBP (£)
-                      </Button>
-                      <Button
-                        variant={meta.currency === "USD" ? "default" : "secondary"}
-                        className="h-11"
-                        onClick={() => setMeta((p) => ({ ...p, currency: "USD" }))}
-                      >
-                        USD ($)
-                      </Button>
-                      <Button
-                        variant={meta.currency === "EUR" ? "default" : "secondary"}
-                        className="h-11"
-                        onClick={() => setMeta((p) => ({ ...p, currency: "EUR" }))}
-                      >
-                        EUR (€)
-                      </Button>
-                    </div>
-
-                    <div className="mt-4 grid gap-3">
+                    <div className="grid gap-3">
                       {items.map((it, idx) => (
                         <div key={it.id} className="rounded-2xl border bg-background p-4">
                           <div className="flex items-center justify-between gap-3">

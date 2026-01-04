@@ -1,0 +1,429 @@
+<!--
+  invoice.html — Print-perfect HTML template for Playwright PDF generation
+  - A4 layout, clean typography, strong hierarchy
+  - Uses simple {{placeholders}} you can replace server-side before rendering in Playwright
+  - No external assets required (optional logo via data URL or absolute URL)
+-->
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Invoice {{invoice.number}}</title>
+    <style>
+      /* ---------- Page / Print setup ---------- */
+      @page {
+        size: A4;
+        margin: 14mm;
+      }
+
+      :root {
+        --ink: #0b0f19;
+        --muted: #5b6473;
+        --line: #e6e8ee;
+        --panel: #f6f7fa;
+        --accent: {{theme.accent}}; /* e.g. #111827 or #2563eb */
+        --radius: 12px;
+      }
+
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+        color: var(--ink);
+        background: #fff;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      /* Keep font sizes readable on PDF */
+      .t-title { font-size: 28px; font-weight: 750; letter-spacing: -0.02em; }
+      .t-h     { font-size: 14px; font-weight: 700; }
+      .t       { font-size: 12.5px; line-height: 1.35; }
+      .t-m     { font-size: 12px; line-height: 1.35; color: var(--muted); }
+      .t-s     { font-size: 11px; line-height: 1.35; color: var(--muted); }
+
+      /* ---------- Layout ---------- */
+      .wrap {
+        width: 100%;
+      }
+
+      .top {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 16px;
+        align-items: start;
+      }
+
+      .brand {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 12px;
+        align-items: center;
+      }
+
+      .logo {
+        width: 46px;
+        height: 46px;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        background: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+      }
+      .logo img { width: 100%; height: 100%; object-fit: contain; }
+
+      .brand-name { font-size: 18px; font-weight: 750; letter-spacing: -0.01em; }
+      .brand-meta { margin-top: 2px; }
+
+      .invoice-meta {
+        text-align: right;
+      }
+
+      .meta-grid {
+        margin-top: 10px;
+        display: grid;
+        grid-template-columns: auto auto;
+        gap: 6px 12px;
+        justify-content: end;
+        align-items: baseline;
+      }
+      .meta-grid .label { font-size: 11px; color: var(--muted); }
+      .meta-grid .value { font-size: 12.5px; font-weight: 650; }
+
+      .divider {
+        margin: 18px 0;
+        border-top: 1px solid var(--line);
+      }
+
+      .two-col {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+      }
+
+      .panel {
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 12px 12px;
+        background: #fff;
+      }
+
+      .panel.soft {
+        background: var(--panel);
+      }
+
+      .panel h3 {
+        margin: 0 0 8px 0;
+        font-size: 11px;
+        color: var(--muted);
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .addr {
+        white-space: pre-line;
+      }
+
+      /* ---------- Items table ---------- */
+      table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+      }
+
+      thead th {
+        background: var(--panel);
+        border-bottom: 1px solid var(--line);
+        padding: 10px 10px;
+        font-size: 11px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        text-align: left;
+        font-weight: 750;
+      }
+
+      tbody td {
+        padding: 10px 10px;
+        border-bottom: 1px solid var(--line);
+        font-size: 12.5px;
+        vertical-align: top;
+      }
+      tbody tr:last-child td { border-bottom: 0; }
+
+      .col-desc { width: 58%; }
+      .col-qty  { width: 10%; text-align: center; }
+      .col-rate { width: 16%; text-align: right; }
+      .col-amt  { width: 16%; text-align: right; font-weight: 700; }
+
+      .muted { color: var(--muted); }
+
+      /* Avoid row breaks across pages if long */
+      tr, td, th { page-break-inside: avoid; }
+      thead { display: table-header-group; }
+      tfoot { display: table-row-group; }
+
+      /* ---------- Totals ---------- */
+      .bottom-grid {
+        margin-top: 14px;
+        display: grid;
+        grid-template-columns: 1fr 320px;
+        gap: 14px;
+        align-items: start;
+      }
+
+      .totals {
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        overflow: hidden;
+      }
+
+      .totals .row {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 10px 12px;
+        background: #fff;
+        border-bottom: 1px solid var(--line);
+        font-size: 12.5px;
+      }
+      .totals .row:last-child { border-bottom: 0; }
+
+      .totals .row .label { color: var(--muted); }
+      .totals .row .value { font-weight: 700; }
+
+      .totals .row.grand {
+        background: var(--panel);
+        font-size: 13.5px;
+      }
+
+      .amount-due {
+        border-top: 2px solid var(--accent);
+      }
+      .amount-due .label { color: var(--ink); font-weight: 750; }
+      .amount-due .value { color: var(--ink); font-weight: 900; }
+
+      /* ---------- Footer ---------- */
+      .footer {
+        margin-top: 18px;
+        display: grid;
+        gap: 10px;
+      }
+
+      .fineprint {
+        border-top: 1px solid var(--line);
+        padding-top: 10px;
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .tag {
+        display: inline-block;
+        padding: 6px 10px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: #fff;
+        font-size: 11px;
+        color: var(--muted);
+      }
+
+      /* ---------- Optional theme variants ---------- */
+      .theme-bold .t-title {
+        color: var(--accent);
+      }
+
+      /* Print cleanliness */
+      a { color: inherit; text-decoration: none; }
+    </style>
+  </head>
+
+  <body class="{{theme.mode}}">
+    <div class="wrap">
+      <!-- Header -->
+      <div class="top">
+        <div class="brand">
+          <div class="logo">
+            <!-- If you have a logo, set {{business.logoUrl}} to a valid absolute URL or data:image/... -->
+            {{#if business.logoUrl}}
+              <img src="{{business.logoUrl}}" alt="Logo" />
+            {{/if}}
+            {{#unless business.logoUrl}}
+              <div class="t-m" style="font-weight:800;">{{business.initials}}</div>
+            {{/unless}}
+          </div>
+
+          <div>
+            <div class="brand-name">{{business.name}}</div>
+            <div class="brand-meta t-m addr">{{business.address}}</div>
+            <div class="t-m">
+              {{#if business.email}}<span>{{business.email}}</span>{{/if}}
+              {{#if business.phone}}<span> • {{business.phone}}</span>{{/if}}
+            </div>
+            <div class="t-m">
+              {{#if business.vat}}VAT: {{business.vat}}{{/if}}
+              {{#if business.companyNumber}}{{#if business.vat}} • {{/if}}Company No: {{business.companyNumber}}{{/if}}
+            </div>
+          </div>
+        </div>
+
+        <div class="invoice-meta">
+          <div class="t-title">Invoice</div>
+
+          <div class="meta-grid">
+            <div class="label">Invoice number</div>
+            <div class="value">{{invoice.number}}</div>
+
+            <div class="label">Issue date</div>
+            <div class="value">{{invoice.issueDate}}</div>
+
+            <div class="label">Due date</div>
+            <div class="value">{{invoice.dueDate}}</div>
+
+            {{#if invoice.poNumber}}
+              <div class="label">PO number</div>
+              <div class="value">{{invoice.poNumber}}</div>
+            {{/if}}
+          </div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- From / Bill To -->
+      <div class="two-col">
+        <div class="panel">
+          <h3>Bill to</h3>
+          <div class="t-h">{{customer.name}}</div>
+          <div class="t-m addr">{{customer.address}}</div>
+          <div class="t-m">
+            {{#if customer.email}}<span>{{customer.email}}</span>{{/if}}
+            {{#if customer.phone}}<span> • {{customer.phone}}</span>{{/if}}
+          </div>
+          {{#if customer.vat}}
+            <div class="t-m">VAT: {{customer.vat}}</div>
+          {{/if}}
+        </div>
+
+        <div class="panel soft">
+          <h3>Summary</h3>
+          <div class="t">
+            <div><span class="muted">Currency:</span> {{invoice.currency}}</div>
+            <div><span class="muted">Terms:</span> {{invoice.terms}}</div>
+            {{#if invoice.reference}}
+              <div><span class="muted">Reference:</span> {{invoice.reference}}</div>
+            {{/if}}
+          </div>
+        </div>
+      </div>
+
+      <div style="height: 14px;"></div>
+
+      <!-- Line items -->
+      <table>
+        <thead>
+          <tr>
+            <th class="col-desc">Description</th>
+            <th class="col-qty">Qty</th>
+            <th class="col-rate">Rate</th>
+            <th class="col-amt">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{#each items}}
+          <tr>
+            <td class="col-desc">
+              <div style="font-weight:700;">{{this.description}}</div>
+              {{#if this.detail}}
+                <div class="t-m addr">{{this.detail}}</div>
+              {{/if}}
+            </td>
+            <td class="col-qty">{{this.quantity}}</td>
+            <td class="col-rate">{{invoice.symbol}}{{this.unitPrice}}</td>
+            <td class="col-amt">{{invoice.symbol}}{{this.lineTotal}}</td>
+          </tr>
+          {{/each}}
+        </tbody>
+      </table>
+
+      <!-- Totals + Payment -->
+      <div class="bottom-grid">
+        <div class="panel">
+          <h3>Notes</h3>
+          <div class="t addr">{{invoice.notes}}</div>
+
+          {{#if payment.link}}
+            <div style="height: 10px;"></div>
+            <div class="t"><span class="muted">Pay online:</span> {{payment.link}}</div>
+          {{/if}}
+        </div>
+
+        <div class="totals">
+          <div class="row">
+            <div class="label">Subtotal</div>
+            <div class="value">{{invoice.symbol}}{{totals.subtotal}}</div>
+          </div>
+
+          {{#if totals.discount}}
+          <div class="row">
+            <div class="label">Discount</div>
+            <div class="value">-{{invoice.symbol}}{{totals.discount}}</div>
+          </div>
+          {{/if}}
+
+          {{#if totals.vat}}
+          <div class="row">
+            <div class="label">VAT ({{totals.vatRate}}%)</div>
+            <div class="value">{{invoice.symbol}}{{totals.vat}}</div>
+          </div>
+          {{/if}}
+
+          <div class="row grand">
+            <div class="label">Total</div>
+            <div class="value">{{invoice.symbol}}{{totals.total}}</div>
+          </div>
+
+          <div class="row amount-due">
+            <div class="label">Amount due</div>
+            <div class="value">{{invoice.symbol}}{{totals.amountDue}}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Payment details -->
+      <div class="footer">
+        <div class="panel soft">
+          <h3>Payment details</h3>
+          <div class="t addr">
+            {{#if payment.bankName}}<div><span class="muted">Bank:</span> {{payment.bankName}}</div>{{/if}}
+            {{#if payment.accountName}}<div><span class="muted">Account name:</span> {{payment.accountName}}</div>{{/if}}
+            {{#if payment.sortCode}}<div><span class="muted">Sort code:</span> {{payment.sortCode}}</div>{{/if}}
+            {{#if payment.accountNumber}}<div><span class="muted">Account number:</span> {{payment.accountNumber}}</div>{{/if}}
+            {{#if payment.iban}}<div><span class="muted">IBAN:</span> {{payment.iban}}</div>{{/if}}
+            {{#if payment.swift}}<div><span class="muted">SWIFT/BIC:</span> {{payment.swift}}</div>{{/if}}
+            {{#if invoice.reference}}<div><span class="muted">Reference:</span> {{invoice.reference}}</div>{{/if}}
+          </div>
+        </div>
+
+        <div class="fineprint">
+          <div class="t-s">
+            {{business.name}} • {{business.email}} {{#if business.phone}}• {{business.phone}}{{/if}}
+          </div>
+          <div class="t-s">
+            Generated on {{invoice.generatedAt}}
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

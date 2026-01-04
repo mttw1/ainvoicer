@@ -169,20 +169,25 @@ export default function Home() {
 							<p className="text-base text-muted-foreground">For regular work</p>
 							<p className="mt-2 text-2xl font-semibold">30 invoices</p>
 							<p className="mt-1 text-lg text-muted-foreground">£9</p>
-							
+
 							<p className="mt-3 text-base text-muted-foreground">Better value per invoice.</p>
 						</div>
 					</div>
 				</section>
 
 				{/* Final CTA */}
-				<section className="pb-16 pt-4">
+				<section className="pb-8 pt-4">
 					<div className="rounded-2xl border bg-foreground/5 p-4 text-center">
 						<h2 className="text-2xl font-semibold tracking-tight">Create your first invoice now</h2>
 						<p className="mt-2 text-base text-muted-foreground">
 							Free • No credit card • Takes 60 seconds
 						</p>
 						<Button className="mt-6 px-8">Create your first invoice</Button>
+					</div>
+					<div className="flex m-4">
+						<p className="mx-auto text-muted-foreground text-center">
+							AInvoicer<br/>Built in Britain
+						</p>
 					</div>
 				</section>
 			</main>
