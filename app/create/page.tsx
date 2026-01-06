@@ -15,90 +15,23 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Labeled } from "@/components/Labeled";
+import { StepShell } from "@/components/StepShell";
+import { useSwipe } from "@/hooks/useSwipe";
+import {
+	BusinessDetails,
+	CustomerDetails,
+	LineItem,
+	InvoiceMeta,
+	steps,
+	Step,
+	currencySymbol
+} from "@/lib/invoice/types";
+import { uid } from "@/lib/uid";
 
-type BusinessDetails = {
-	businessName: string;
-	email: string;
-	phone: string;
-	address: string;
-	vatNumber: string;
-};
-
-type CustomerDetails = {
-	customerName: string;
-	customerEmail: string;
-	customerPhone: string;
-	customerAddress: string;
-};
-
-type LineItem = {
-	id: string;
-	description: string;
-	quantity: number;
-	unitPrice: number;
-};
-
-type InvoiceMeta = {
-	invoiceNumber: string;
-	issueDate: string; // YYYY-MM-DD
-	dueDate: string; // YYYY-MM-DD
-	notes: string;
-	currency: "GBP";
-};
-
-const steps = ["Business", "Customer", "Items", "Generate"] as const;
-type Step = (typeof steps)[number];
-
-const currencySymbol: Record<InvoiceMeta["currency"], string> = {
-	GBP: "£",
-};
-
-function uid() {
-	return Math.random().toString(36).slice(2);
-}
-
-function clamp(n: number, min: number, max: number) {
-	return Math.max(min, Math.min(max, n));
-}
-
-function toMoney(n: number) {
-	if (!Number.isFinite(n)) return "0.00";
-	return n.toFixed(2);
-}
-
-function calcSubtotal(items: LineItem[]) {
-	return items.reduce((sum, it) => sum + (Number(it.quantity) || 0) * (Number(it.unitPrice) || 0), 0);
-}
-
-function useSwipe(onLeft: () => void, onRight: () => void) {
-	const startX = React.useRef<number | null>(null);
-	const startY = React.useRef<number | null>(null);
-
-	function onTouchStart(e: React.TouchEvent) {
-		const t = e.touches[0];
-		startX.current = t.clientX;
-		startY.current = t.clientY;
-	}
-
-	function onTouchEnd(e: React.TouchEvent) {
-		if (startX.current == null || startY.current == null) return;
-		const t = e.changedTouches[0];
-		const dx = t.clientX - startX.current;
-		const dy = t.clientY - startY.current;
-
-		// Avoid interfering with vertical scroll.
-		if (Math.abs(dy) > Math.abs(dx)) return;
-
-		const threshold = 60;
-		if (dx <= -threshold) onLeft();
-		if (dx >= threshold) onRight();
-
-		startX.current = null;
-		startY.current = null;
-	}
-
-	return { onTouchStart, onTouchEnd };
-}
+import { clamp, toMoney, calcSubtotal } from "@/lib/invoice/maths";
+import { BusinessStep } from "../steps/BusinessStep";
+import { CustomerStep } from "../steps/CustomerStep";
 
 export default function CreateInvoicePage() {
 	const today = React.useMemo(() => new Date(), []);
@@ -133,7 +66,7 @@ export default function CreateInvoicePage() {
 	});
 
 	const [items, setItems] = React.useState<LineItem[]>([
-		{ id: uid(), description: "", quantity: 1, unitPrice: 0 },
+		{ id: uid(), description: "", quantity: 1, unitPrice: "0" },
 	]);
 
 	const step: Step = steps[stepIndex];
@@ -193,7 +126,7 @@ export default function CreateInvoicePage() {
 	}
 
 	function addItem() {
-		setItems((prev) => [...prev, { id: uid(), description: "", quantity: 1, unitPrice: 0 }]);
+		setItems((prev) => [...prev, { id: uid(), description: "", quantity: 1, unitPrice: "0" }]);
 	}
 
 	function removeItem(id: string) {
@@ -275,109 +208,11 @@ export default function CreateInvoicePage() {
 							className="py-6"
 						>
 							{step === "Business" && (
-								<StepShell
-									title="Business details"
-									subtitle="These appear at the top of your invoice."
-									hint="Swipe left to continue."
-								>
-									<Labeled label="Business name (required)">
-										<Input
-											className="h-12 text-base"
-											value={business.businessName}
-											onChange={(e) => setBusiness((p) => ({ ...p, businessName: e.target.value }))}
-											placeholder="e.g. Smith Electrical"
-											inputMode="text"
-											autoComplete="organization"
-										/>
-									</Labeled>
-
-									<Labeled label="Email">
-										<Input
-											className="h-12 text-base"
-											value={business.email}
-											onChange={(e) => setBusiness((p) => ({ ...p, email: e.target.value }))}
-											placeholder="you@business.com"
-											inputMode="email"
-											autoComplete="email"
-										/>
-									</Labeled>
-
-									<Labeled label="Phone">
-										<Input
-											className="h-12 text-base"
-											value={business.phone}
-											onChange={(e) => setBusiness((p) => ({ ...p, phone: e.target.value }))}
-											placeholder="e.g. 07..."
-											inputMode="tel"
-											autoComplete="tel"
-										/>
-									</Labeled>
-
-									<Labeled label="Address">
-										<Textarea
-											className="min-h-24 text-base"
-											value={business.address}
-											onChange={(e) => setBusiness((p) => ({ ...p, address: e.target.value }))}
-											placeholder="Street, town, postcode"
-										/>
-									</Labeled>
-
-									<Labeled label="VAT number (optional)">
-										<Input
-											className="h-12 text-base"
-											value={business.vatNumber}
-											onChange={(e) => setBusiness((p) => ({ ...p, vatNumber: e.target.value }))}
-											placeholder="GB..."
-											inputMode="text"
-										/>
-									</Labeled>
-								</StepShell>
+								<BusinessStep business={business} setBusiness={setBusiness} />
 							)}
 
 							{step === "Customer" && (
-								<StepShell title="Customer details" subtitle="Who are you billing?" hint="Swipe left to continue.">
-									<Labeled label="Customer name (required)">
-										<Input
-											className="h-12 text-base"
-											value={customer.customerName}
-											onChange={(e) => setCustomer((p) => ({ ...p, customerName: e.target.value }))}
-											placeholder="e.g. John Brown"
-											inputMode="text"
-											autoComplete="name"
-										/>
-									</Labeled>
-
-									<Labeled label="Email">
-										<Input
-											className="h-12 text-base"
-											value={customer.customerEmail}
-											onChange={(e) => setCustomer((p) => ({ ...p, customerEmail: e.target.value }))}
-											placeholder="customer@email.com"
-											inputMode="email"
-											autoComplete="email"
-										/>
-									</Labeled>
-
-									<Labeled label="Phone">
-										<Input
-											className="h-12 text-base"
-											value={customer.customerPhone}
-											onChange={(e) => setCustomer((p) => ({ ...p, customerPhone: e.target.value }))}
-											placeholder="e.g. 07..."
-											inputMode="tel"
-											autoComplete="tel"
-										/>
-									</Labeled>
-
-									<Labeled label="Address">
-										<Textarea
-											className="min-h-24 text-base"
-											value={customer.customerAddress}
-											onChange={(e) => setCustomer((p) => ({ ...p, customerAddress: e.target.value }))}
-											placeholder="Street, town, postcode"
-										/>
-									</Labeled>
-								</StepShell>
+								<CustomerStep customer={customer} setCustomer={setCustomer} />
 							)}
 
 							{step === "Items" && (
@@ -427,16 +262,17 @@ export default function CreateInvoicePage() {
 														<Labeled label={`Unit price (${symbol})`}>
 															<Input
 																className="h-12 text-base"
-																value={String(it.unitPrice)}
+																value={it.unitPrice}
 																onChange={(e) =>
-																	updateItem(it.id, { unitPrice: Number(e.target.value || 0) })
+																	updateItem(it.id, { unitPrice: e.target.value })
 																}
 																inputMode="decimal"
 															/>
+
 														</Labeled>
 													</div>
 
-													<div className="rounded-xl border bg-foreground/5 p-3 text-base text-muted-foreground">
+													<div className="rounded-md border bg-foreground/5 p-3 text-base text-muted-foreground">
 														Line total:{" "}
 														<span className="text-foreground font-semibold">
 															{symbol}
@@ -445,8 +281,8 @@ export default function CreateInvoicePage() {
 													</div>
 													<div>
 														<Dialog>
-															<DialogTrigger className="flex">
-																Add Field
+															<DialogTrigger asChild>
+																<Button>Add field</Button>
 															</DialogTrigger>
 															<DialogContent>
 																<DialogHeader>
@@ -454,10 +290,14 @@ export default function CreateInvoicePage() {
 																		Add field to line item
 																	</DialogTitle>
 																	<DialogDescription>
-																		Field
+																		Add extra context to this line item without affecting totals.
 																	</DialogDescription>
 																</DialogHeader>
-																<DialogClose>Cancel</DialogClose>
+																<div className="grid grid-cols-2 gap-3">
+																	<DialogClose>Cancel</DialogClose>
+																	<Button>Add</Button>
+																</div>
+
 															</DialogContent>
 														</Dialog>
 													</div>
@@ -471,11 +311,11 @@ export default function CreateInvoicePage() {
 									</div>
 
 									<div className="rounded-2xl border bg-foreground/4 p-4 flex items-center justify-between text-base">
-											<span className="text-muted-foreground font-medium">Subtotal</span>
-											<span className="font-bold">
-												{symbol}
-												{toMoney(subtotal)}
-											</span>
+										<span className="text-muted-foreground font-medium">Subtotal</span>
+										<span className="font-bold">
+											{symbol}
+											{toMoney(subtotal)}
+										</span>
 									</div>
 
 
@@ -580,7 +420,7 @@ export default function CreateInvoicePage() {
 															<div className="text-base font-semibold">{it.description}</div>
 															<div className="text-base text-muted-foreground">
 																{it.quantity} × {symbol}
-																{toMoney(it.unitPrice)}
+																{toMoney(parseFloat(it.unitPrice))}
 															</div>
 														</div>
 														<div className="mt-2 text-base">
@@ -659,28 +499,5 @@ export default function CreateInvoicePage() {
 				</div>
 			</footer>
 		</div>
-	);
-}
-
-function StepShell(props: { title: string; subtitle: string; hint: string; children: React.ReactNode }) {
-	return (
-		<div className="space-y-5">
-			<div>
-				<h1 className="text-2xl font-semibold tracking-tight">{props.title}</h1>
-				<p className="mt-2 text-base text-muted-foreground">{props.subtitle}</p>
-				<p className="mt-2 text-base text-muted-foreground">{props.hint}</p>
-			</div>
-
-			<div className="space-y-4">{props.children}</div>
-		</div>
-	);
-}
-
-function Labeled(props: { label: string; children: React.ReactNode }) {
-	return (
-		<label className="block">
-			<div className="mb-2 text-base font-medium">{props.label}</div>
-			{props.children}
-		</label>
 	);
 }
