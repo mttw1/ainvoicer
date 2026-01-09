@@ -1,161 +1,104 @@
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Labeled } from "@/components/Labeled";
 import { StepShell } from "@/components/StepShell";
-import { InvoiceMeta, LineItem } from "@/lib/invoice/types";
+import { LineItemCard } from "@/components/LineItemCard";
 
-type Props = {
-	items: LineItem[];
-	meta: InvoiceMeta;
-	symbol: string;
-	subtotal: number;
+type LineItem = { id: string; description: string; quantity: number; unitPrice: string };
+type InvoiceMeta = { invoiceNumber: string; issueDate: string; dueDate: string; notes: string; currency: "GBP" };
 
-	actions
+function toMoney(n: number) {
+  if (!Number.isFinite(n)) return "0.00";
+  return n.toFixed(2);
 }
 
-export function ItemsStep({ items, setItems}: Props) {
-	return (
-		<StepShell
-			title="Line items"
-			subtitle="What did you do, and how much?"
-			hint="Tip: keep it simple. One line item is often enough."
-		>
-			<div className="grid gap-3">
-				{items.map((it, idx) => (
-					<div key={it.id} className="rounded-2xl border bg-foreground/5 p-4">
-						<div className="flex items-center justify-between gap-3">
-							<div className="text-base font-semibold">Item {idx + 1}</div>
-							<Button
-								variant="destructive"
-								className="h-11"
-								onClick={() => removeItem(it.id)}
-								disabled={items.length <= 1}
-							>
-								Remove
-							</Button>
-						</div>
+type Props = {
+  items: LineItem[];
+  meta: InvoiceMeta;
+  symbol: string;
+  subtotal: number;
+  actions: {
+    updateItem: (id: string, patch: Partial<LineItem>) => void;
+    addItem: () => void;
+    removeItem: (id: string) => void;
+    updateMeta: (patch: Partial<InvoiceMeta>) => void;
+  };
+};
 
-						<div className="mt-4 grid gap-3">
-							<Labeled label="Description (required)">
-								<Input
-									className="h-12 text-base"
-									value={it.description}
-									onChange={(e) => updateItem(it.id, { description: e.target.value })}
-									placeholder="e.g. Call-out + repair"
-									inputMode="text"
-								/>
-							</Labeled>
+export function ItemsStep({ items, meta, symbol, subtotal, actions }: Props) {
+  return (
+    <StepShell
+      title="Line items"
+      subtitle="What did you do, and how much?"
+      hint="Tip: keep it simple. One line item is often enough."
+    >
+      <div className="grid gap-3">
+        {items.map((it, idx) => (
+          <LineItemCard
+            key={it.id}
+            item={it}
+            index={idx}
+            symbol={symbol}
+            canRemove={items.length > 1}
+            onRemove={() => actions.removeItem(it.id)}
+            onUpdate={(patch) => actions.updateItem(it.id, patch)}
+          />
+        ))}
 
-							<div className="grid grid-cols-2 gap-3">
-								<Labeled label="Quantity">
-									<Input
-										className="h-12 text-base"
-										value={String(it.quantity)}
-										onChange={(e) =>
-											updateItem(it.id, { quantity: Number(e.target.value || 0) })
-										}
-										inputMode="decimal"
-									/>
-								</Labeled>
+        <Button className="h-12 my-2" onClick={actions.addItem}>
+          Add another line item
+        </Button>
+      </div>
 
-								<Labeled label={`Unit price (${symbol})`}>
-									<Input
-										className="h-12 text-base"
-										value={it.unitPrice}
-										onChange={(e) =>
-											updateItem(it.id, { unitPrice: e.target.value })
-										}
-										inputMode="decimal"
-									/>
+      <div className="rounded-2xl border bg-foreground/4 p-4 flex items-center justify-between text-base">
+        <span className="text-muted-foreground font-medium">Subtotal</span>
+        <span className="font-bold">
+          {symbol}
+          {toMoney(subtotal)}
+        </span>
+      </div>
 
-								</Labeled>
-							</div>
+      <div className="mt-6 rounded-2xl border bg-foreground/5 p-4">
+        <div className="grid grid-cols-2 gap-3 p-2">
+          <Labeled label="Invoice number">
+            <Input
+              className="h-12 text-base"
+              value={meta.invoiceNumber}
+              onChange={(e) => actions.updateMeta({ invoiceNumber: e.target.value })}
+            />
+          </Labeled>
 
-							<div className="rounded-md border bg-foreground/5 p-3 text-base text-muted-foreground">
-								Line total:{" "}
-								<span className="text-foreground font-semibold">
-									{symbol}
-									{toMoney((Number(it.quantity) || 0) * (Number(it.unitPrice) || 0))}
-								</span>
-							</div>
-							<div>
-								<Dialog>
-									<DialogTrigger asChild>
-										<Button>Add field</Button>
-									</DialogTrigger>
-									<DialogContent>
-										<DialogHeader>
-											<DialogTitle>
-												Add field to line item
-											</DialogTitle>
-											<DialogDescription>
-												Add extra context to this line item without affecting totals.
-											</DialogDescription>
-										</DialogHeader>
-										<div className="grid grid-cols-2 gap-3">
-											<DialogClose>Cancel</DialogClose>
-											<Button>Add</Button>
-										</div>
+          <Labeled label="Issue date">
+            <Input
+              className="h-12 text-base"
+              type="date"
+              value={meta.issueDate}
+              onChange={(e) => actions.updateMeta({ issueDate: e.target.value })}
+            />
+          </Labeled>
 
-									</DialogContent>
-								</Dialog>
-							</div>
-						</div>
-					</div>
-				))}
+          <Labeled label="Due date">
+            <Input
+              className="h-12 text-base"
+              type="date"
+              value={meta.dueDate}
+              onChange={(e) => actions.updateMeta({ dueDate: e.target.value })}
+            />
+          </Labeled>
+        </div>
 
-				<Button className="h-12 my-2" onClick={addItem}>
-					Add another line item
-				</Button>
-			</div>
-
-			<div className="rounded-2xl border bg-foreground/4 p-4 flex items-center justify-between text-base">
-				<span className="text-muted-foreground font-medium">Subtotal</span>
-				<span className="font-bold">
-					{symbol}
-					{toMoney(subtotal)}
-				</span>
-			</div>
-
-
-			<div className="mt-6 rounded-2xl border bg-foreground/5 p-4">
-				<div className="grid grid-cols-2 gap-3 p-2 ">
-					<Labeled label="Invoice number">
-						<Input
-							className="h-12 text-base"
-							value={meta.invoiceNumber}
-							onChange={(e) => setMeta((p) => ({ ...p, invoiceNumber: e.target.value }))}
-						/>
-					</Labeled>
-
-					<Labeled label="Issue date">
-						<Input
-							className="h-12 text-base"
-							type="date"
-							value={meta.issueDate}
-							onChange={(e) => setMeta((p) => ({ ...p, issueDate: e.target.value }))}
-						/>
-					</Labeled>
-
-					<Labeled label="Due date">
-						<Input
-							className="h-12 text-base"
-							type="date"
-							value={meta.dueDate}
-							onChange={(e) => setMeta((p) => ({ ...p, dueDate: e.target.value }))}
-						/>
-					</Labeled>
-				</div>
-
-				<div className="mt-3 p-2">
-					<Labeled label="Notes (optional)">
-						<Textarea
-							className="min-h-24 text-base"
-							value={meta.notes}
-							onChange={(e) => setMeta((p) => ({ ...p, notes: e.target.value }))}
-							placeholder="e.g. Thanks for your business."
-						/>
-					</Labeled>
-				</div>
-			</div>
-		</StepShell>
-	)
+        <div className="mt-3 p-2">
+          <Labeled label="Notes (optional)">
+            <Textarea
+              className="min-h-24 text-base"
+              value={meta.notes}
+              onChange={(e) => actions.updateMeta({ notes: e.target.value })}
+              placeholder="e.g. Thanks for your business."
+            />
+          </Labeled>
+        </div>
+      </div>
+    </StepShell>
+  );
 }
